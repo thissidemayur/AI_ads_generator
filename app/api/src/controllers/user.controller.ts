@@ -62,10 +62,16 @@ export class UserController {
   updateMe = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.authUser.userId;
     const updatedUser = await this.userService.updateProfile(userId, req.body);
-
+  
     res
       .status(200)
-      .json(new ApiResponse(200, "Profile updated successfully", updatedUser));
+      .json(
+        new ApiResponse(
+          200,
+          "Profile updated successfully",
+         updatedUser ,
+        ),
+      );
   });
 
   emailChange = asyncHandler(async (req: Request, res: Response) => {
