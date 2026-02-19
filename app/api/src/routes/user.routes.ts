@@ -2,7 +2,8 @@ import { Router, type RequestHandler } from "express";
 
 import { validate } from "../middlewares/validate.middleware";
 
-import { changePasswordSchema, confirmEmailChangeSchema, requestEmailChangeSchema, updateUserSchema, type IUserController } from "@project/shared";
+import { changePasswordSchema, confirmEmailChangeSchema, requestEmailChangeSchema, updateUserSchema } from "@project/shared/client";
+import type { IUserController } from "@project/shared";
 
 export const userRouter = (userController: IUserController, authenticate:RequestHandler) => {
   const router = Router();
