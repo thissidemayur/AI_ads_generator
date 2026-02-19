@@ -59,8 +59,6 @@ export class WorkspaceController implements IWorkspaceControllerInterface {
     const { targetUserId, role } = req.body;
     const tenantId = req.authUser.tenantId;
 
-   
-
     const member = await this.workspaceService.addMember(
       tenantId,
       targetUserId,
@@ -70,5 +68,30 @@ export class WorkspaceController implements IWorkspaceControllerInterface {
     res
       .status(201)
       .json(new ApiResponse(201, "Member added successfully", member));
+  });
+
+
+  getMembers = asyncHandler(async (req: Request, res: Response) => {
+    const tenantId = req.authUser.tenantId;
+    const members = await this.workspaceService.getAllMembers(tenantId);
+    res.status(200).json(new ApiResponse(200, "Members retrieved", members));
+  });
+
+  deleteCurrentWorkspace = asyncHandler(async (req: Request, res: Response) => {
+    const tenantId = req.authUser.tenantId;
+    const userId = req.authUser.userId;
+
+    await this.workspaceService.deleteWorkspace(tenantId, userId);
+    res
+      .status(200)
+      .json(new ApiResponse(200, "Workspace and all associated data purged"));
+  });
+
+  purgeAllWorkspaces = asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.authUser.userId;
+    await this.workspaceService.deleteAllOwnedWorkspaces(userId);
+    res
+      .status(200)
+      .json(new ApiResponse(200, "All owned workspaces have been deleted"));
   });
 }
