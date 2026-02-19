@@ -42,4 +42,19 @@ export class PrismaWorkspaceRepository implements IWorkspaceRepository {
       where: { id: tenantId },
     });
   }
+
+async findAllMembers(tenantId: string) {
+  return this.db.member.findMany({
+    where: { tenantId },
+    include: { user: { select: { firstName: true, lastName: true, email: true } } }
+  });
+}
+
+async findOwnedTenants(userId: string): Promise<string[]> {
+  const memberships = await this.db.member.findMany({
+    where: { userId, role: 'OWNER' },
+    select: { tenantId: true }
+  });
+  return memberships.map(m => m.tenantId);
+}
 }
