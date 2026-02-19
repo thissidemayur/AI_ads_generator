@@ -1,6 +1,7 @@
-import {  forgetPasswordSchema, loginSchema, registerSchema, resendVerificationSchema, resetPasswordSchema, verifyEmailSchema, type IAuthController } from "@project/shared";
+import {  forgetPasswordSchema, loginSchema, registerSchema, resendVerificationSchema, resetPasswordSchema, verifyEmailSchema, } from "@project/shared/client";
 import { Router } from "express";
 import { validate } from "../middlewares/validate.middleware";
+import type { IAuthController } from "@project/shared";
 
 export const authRouter = (controller: IAuthController) => {
   const router = Router();
