@@ -72,8 +72,8 @@ export const EmailTemplates = {
     `,
   }),
 
-  PASSWORD_RESET: (name: string, resetLink: string) => ({
-    subject: "Reset your password - AiAdoGen",
+  PASSWORD_RESET: (name: string, otp: number) => ({
+    subject: `${otp} is your AiAdoGen verification code`,
     html: `
     <!DOCTYPE html>
     <html>
@@ -91,41 +91,35 @@ export const EmailTemplates = {
 
               <tr>
                 <td align="center" style="font-size:26px;font-weight:700;color:#111827;">
-                  🔐 Password Reset
+                  📩 Verify Your Email
                 </td>
               </tr>
 
               <tr>
-                <td style="padding-top:20px;font-size:16px;color:#374151;">
+                <td style="padding-top:20px;font-size:16px;color:#374151;text-align:center;">
                   Hi <strong>${name}</strong>,
                 </td>
               </tr>
 
               <tr>
-                <td style="padding-top:10px;color:#6b7280;font-size:15px;line-height:24px;">
-                  Click the button below to securely reset your password.
+                <td style="padding-top:10px;color:#6b7280;font-size:15px;line-height:24px;text-align:center;">
+                  Use the verification code below to complete your registration. This code will expire in 10 minutes.
                 </td>
               </tr>
 
               <tr>
                 <td align="center" style="padding:30px 0;">
-                  <a href="${resetLink}" 
-                    style="background:linear-gradient(90deg,#4F46E5,#7C3AED);
-                    color:#ffffff;
-                    padding:14px 28px;
-                    text-decoration:none;
-                    border-radius:10px;
-                    font-weight:600;
-                    font-size:15px;
-                    display:inline-block;">
-                    Reset Password
-                  </a>
+                  <div style="background:#f9fafb; border: 2px dashed #e5e7eb; border-radius: 12px; padding: 20px 40px; display: inline-block;">
+                    <span style="font-size:32px; font-weight:800; letter-spacing:8px; color:#4F46E5; font-family: 'Courier New', Courier, monospace;">
+                      ${otp}
+                    </span>
+                  </div>
                 </td>
               </tr>
 
               <tr>
                 <td style="font-size:13px;color:#9ca3af;text-align:center;">
-                  If you didn’t request this, you can safely ignore this email.
+                  If you didn’t request this code, you can safely ignore this email.
                 </td>
               </tr>
 

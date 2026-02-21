@@ -70,7 +70,6 @@ export class WorkspaceController implements IWorkspaceControllerInterface {
       .json(new ApiResponse(201, "Member added successfully", member));
   });
 
-
   getMembers = asyncHandler(async (req: Request, res: Response) => {
     const tenantId = req.authUser.tenantId;
     const members = await this.workspaceService.getAllMembers(tenantId);
@@ -94,4 +93,32 @@ export class WorkspaceController implements IWorkspaceControllerInterface {
       .status(200)
       .json(new ApiResponse(200, "All owned workspaces have been deleted"));
   });
+
+  update = async (req: Request, res: Response) => {
+    try {
+      const { name } = req.body;
+      const tenantId = req.headers["x-tenant-id"] as string;
+      const userId = req.authUser.id;
+      // const tenantId = req.authUser.
+
+      const updatedWorkspace = await this.workspaceService.updateWorkspaceName(
+        tenantId,
+        userId,
+        name,
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Workspace renamed successfully",
+        data: updatedWorkspace,
+      });
+    } catch (error: any) {
+      return res
+        .status(error.message.includes("UNAUTHORIZED") ? 403 : 400)
+        .json({
+          success: false,
+          message: error.message,
+        });
+    }
+  };
 }

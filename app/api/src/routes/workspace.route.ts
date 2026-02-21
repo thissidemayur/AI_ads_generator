@@ -25,6 +25,6 @@ export const workspaceRouter = (
   router.delete("/current", controller.deleteCurrentWorkspace);
 
   router.delete("/purge-all", controller.purgeAllWorkspaces);
-
+router.patch("/current",controller.update)
   return router;
 };

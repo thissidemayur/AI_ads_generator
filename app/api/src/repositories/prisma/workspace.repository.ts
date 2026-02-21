@@ -43,18 +43,35 @@ export class PrismaWorkspaceRepository implements IWorkspaceRepository {
     });
   }
 
-async findAllMembers(tenantId: string) {
-  return this.db.member.findMany({
-    where: { tenantId },
-    include: { user: { select: { firstName: true, lastName: true, email: true } } }
-  });
-}
+  async findAllMembers(tenantId: string) {
+    return this.db.member.findMany({
+      where: { tenantId },
+      include: {
+        user: { select: { firstName: true, lastName: true, email: true } },
+      },
+    });
+  }
 
-async findOwnedTenants(userId: string): Promise<string[]> {
-  const memberships = await this.db.member.findMany({
-    where: { userId, role: 'OWNER' },
-    select: { tenantId: true }
-  });
-  return memberships.map(m => m.tenantId);
-}
+  async findOwnedTenants(userId: string): Promise<string[]> {
+    const memberships = await this.db.member.findMany({
+      where: { userId, role: "OWNER" },
+      select: { tenantId: true },
+    });
+    return memberships.map((m) => m.tenantId);
+  }
+
+  async update(id: string, data: Partial<Tenant>): Promise<Tenant> {
+    return await this.db.tenant.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async findMember(tenantId: string, userId: string) {
+    return await this.db.member.findUnique({
+      where: {
+        userId_tenantId: { userId, tenantId },
+      },
+    });
+  }
 }

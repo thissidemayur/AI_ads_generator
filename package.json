@@ -1,0 +1,22 @@
+{
+  "name": "ai-ads-platform",
+  "private": true,
+  "scripts": {
+    "dev": "bun --filter '*' dev",
+    "build": "bun --filter '*' build",
+    "install:all": "bun install",
+    "api:dev": "bun --filter @project/api run dev",
+    "worker:dev": "bun --filter @project/worker run dev",
+    "db:generate": "bun --filter @project/shared run db:generate",
+    "db:migrate": "bun --filter @project/shared run db:migrate"
+  },
+  "workspaces": [
+    "app/*",
+    "packages/*"
+  ],
+  "dependencies": {
+    "@project/web": "./app/web",
+    "axios": "^1.13.5",
+    "zustand": "^5.0.11"
+  }
+}

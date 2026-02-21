@@ -51,7 +51,7 @@ export class WorkspaceService implements IWorkspaceService {
       );
     }
 
-   await this.workspaceRepo.delete(tenantId);
+    await this.workspaceRepo.delete(tenantId);
   }
 
   async deleteAllOwnedWorkspaces(userId: string): Promise<void> {
@@ -80,5 +80,19 @@ export class WorkspaceService implements IWorkspaceService {
     role: Role,
   ): Promise<Member> {
     return this.memberRepo.create(userId, tenantId, role);
+  }
+
+  async updateWorkspaceName(tenantId: string, userId: string, newName: string) {
+    const member = await this.workspaceRepo.findMember(tenantId, userId);
+    if (!member) {
+      throw new Error("NOT_FOUND: You are not a member of this workspace.");
+    }
+    if (member.role !== "OWNER") {
+      throw new Error(
+        "FORBIDDEN: Only the Workspace Owner can rename the workspace.",
+      );
+    }
+
+    return await this.workspaceRepo.update(tenantId, { name: newName });
   }
 }
