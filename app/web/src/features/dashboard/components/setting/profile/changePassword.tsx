@@ -1,7 +1,7 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useState } from "react";
+import { Controller } from "react-hook-form";
 import {
   Lock,
   ShieldCheck,
@@ -10,8 +10,6 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import * as z from "zod";
-import * as React from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,45 +20,14 @@ import {
   FieldGroup,
   FieldDescription,
 } from "@/components/ui/field";
+import { useChangePassword } from "@/hooks/user/useChangePassword";
 
-// 🛡️ Schema
-export const changePasswordSchema = z
-  .object({
-    currentPassword: z.string().min(1, "Current password is required."),
-    newPassword: z
-      .string()
-      .min(8, "New password must be at least 8 characters.")
-      .max(32, "Password is too long."),
-    confirmPassword: z.string().min(1, "Please confirm your new password."),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords do not match.",
-    path: ["confirmPassword"],
-  });
-
-type ChangePasswordValues = z.infer<typeof changePasswordSchema>;
-
-// 🛠️ UI Only Component
 export function PasswordForm() {
-  const [showPass, setShowPass] = React.useState(false);
-
-  const form = useForm<ChangePasswordValues>({
-    resolver: zodResolver(changePasswordSchema),
-    defaultValues: {
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    },
-  });
-
-  // Placeholder for logic
-  const onSubmit = async (data: ChangePasswordValues) => {
-    console.log("Password change requested:", data);
-  };
+  const [showPass, setShowPass] = useState(false);
+  const { form, handleSubmit, isSubmitting } = useChangePassword();
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Informational Header inside the form area */}
       <div className="flex items-start gap-4 p-4 rounded-2xl bg-primary/5 border border-primary/10">
         <div className="p-2 bg-primary/10 rounded-xl">
           <KeyRound className="w-5 h-5 text-primary" />
@@ -76,12 +43,9 @@ export function PasswordForm() {
         </div>
       </div>
 
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-8 max-w-xl"
-      >
+      {/* 2. Use handleSubmit from the hook */}
+      <form onSubmit={handleSubmit} className="space-y-8 max-w-xl">
         <FieldGroup className="space-y-6">
-          {/* Current Password */}
           <Controller
             name="currentPassword"
             control={form.control}
@@ -120,7 +84,6 @@ export function PasswordForm() {
             </div>
           </div>
 
-          {/* New Password & Confirm Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Controller
               name="newPassword"
@@ -191,12 +154,12 @@ export function PasswordForm() {
           <Button
             type="submit"
             className="h-14 px-8 rounded-2xl font-black uppercase tracking-widest bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 active:scale-[0.98] transition-all w-full md:w-auto"
-            disabled={form.formState.isSubmitting}
+            disabled={isSubmitting}
           >
-            {form.formState.isSubmitting ? (
+            {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Updating Protocols...
+                Updating Password...
               </>
             ) : (
               "Apply New Password"

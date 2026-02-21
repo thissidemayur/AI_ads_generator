@@ -12,16 +12,26 @@ import {
 } from "@project/shared/client";
 import { userService } from "@/services/user.service";
 
+import { z } from "zod";
+
+const localSchema = changePasswordSchema.extend({
+  confirmPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 export const useChangePassword = () => {
   const router = useRouter();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const clearWorkspace = useWorkspaceStore((state) => state.clearWorkspace);
 
-  const form = useForm<ChangePasswordDTO>({
-    resolver: zodResolver(changePasswordSchema),
+  const form = useForm<z.infer<typeof localSchema>>({
+    resolver: zodResolver(localSchema),
     defaultValues: {
       newPassword: "",
       currentPassword: "",
+      confirmPassword:""
     },
   });
 
