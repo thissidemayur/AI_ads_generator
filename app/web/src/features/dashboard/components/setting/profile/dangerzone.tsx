@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Controller } from "react-hook-form";
 import {
   AlertTriangle,
   Trash2,
@@ -10,16 +9,10 @@ import {
   Loader2,
   ShieldAlert,
 } from "lucide-react";
-import * as z from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Field,
-  FieldLabel,
-  FieldError,
-  FieldGroup,
-} from "@/components/ui/field";
+import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import {
   Dialog,
   DialogContent,
@@ -29,36 +22,24 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-// 🛡️ Deletion Schema
-const deleteAccountSchema = z.object({
-  confirmation: z.string().refine((val) => val === "DELETE", {
-    message: "Please type DELETE to confirm.",
-  }),
-});
-
-type DeleteAccountValues = z.infer<typeof deleteAccountSchema>;
+import {
+  useDeleteUser,
+  useTerminateSessions,
+} from "@/hooks/user/useDangerZone";
 
 export function DangerZone() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  const form = useForm<DeleteAccountValues>({
-    resolver: zodResolver(deleteAccountSchema),
-    defaultValues: { confirmation: "" },
-  });
+  const { handleTerminate, isTerminating } = useTerminateSessions();
 
-  // Placeholder Actions
-  const handleTerminateSessions = async () => {
-    console.log("Terminating all other sessions...");
-  };
-
-  const onDeleteSubmit = async (data: DeleteAccountValues) => {
-    console.log("Account deletion confirmed:", data);
-  };
+  const {
+    form: deleteForm,
+    handleSubmit: handleDeleteSubmit,
+    isSubmitting: isDeleting,
+  } = useDeleteUser();
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* 🚀 TERMINATE SESSIONS */}
       <div className="group relative overflow-hidden p-6 rounded-[2rem] border border-white/[0.05] bg-white/[0.01] hover:bg-white/[0.02] transition-all">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="flex gap-4">
@@ -70,22 +51,26 @@ export function DangerZone() {
                 Session Management
               </h4>
               <p className="text-[11px] text-zinc-500 max-w-sm leading-relaxed">
-                Log out of all active devices and browsers except for this one.
-                Use this if you suspect unauthorized access.
+                Log out of all active devices except this one. Suspect
+                unauthorized access? Reset your protocols here.
               </p>
             </div>
           </div>
           <Button
             variant="ghost"
-            onClick={handleTerminateSessions}
+            onClick={handleTerminate}
+            disabled={isTerminating}
             className="h-11 px-6 rounded-xl border border-white/[0.05] hover:bg-white/[0.05] text-[10px] font-black uppercase tracking-widest"
           >
-            Terminate Others
+            {isTerminating ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              "Terminate Others"
+            )}
           </Button>
         </div>
       </div>
 
-      {/* 🧨 DELETE ACCOUNT (THE RED ZONE) */}
       <div className="group relative overflow-hidden p-6 rounded-[2rem] border border-red-500/10 bg-red-500/[0.02] hover:bg-red-500/[0.04] transition-all">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="flex gap-4">
@@ -97,10 +82,9 @@ export function DangerZone() {
                 Danger Zone
               </h4>
               <p className="text-[11px] text-zinc-500 max-w-sm leading-relaxed">
-                Permanently remove your identity, all workspaces, and generated
-                AI assets.
+                Permanently remove your identity and all AI assets.
                 <span className="text-red-500/60 ml-1 italic">
-                  This action is irreversible.
+                  Irreversible action.
                 </span>
               </p>
             </div>
@@ -116,7 +100,7 @@ export function DangerZone() {
               </Button>
             </DialogTrigger>
 
-            <DialogContent className="bg-zinc-950/95 backdrop-blur-2xl border-white/[0.08] sm:max-w-[440px] rounded-[2.5rem] p-8 shadow-showroom">
+            <DialogContent className="bg-zinc-950/95 backdrop-blur-2xl border-white/[0.08] sm:max-w-[440px] rounded-[2.5rem] p-8 shadow-2xl">
               <DialogHeader className="space-y-4">
                 <div className="mx-auto p-4 bg-red-500/10 rounded-[1.5rem] w-fit border border-red-500/20">
                   <ShieldAlert className="w-8 h-8 text-red-500" />
@@ -125,25 +109,20 @@ export function DangerZone() {
                   <DialogTitle className="text-2xl font-black text-white uppercase italic tracking-tighter">
                     Final Confirmation
                   </DialogTitle>
-                  <DialogDescription className="text-zinc-500 text-xs">
-                    You are about to purge your entire presence from our
-                    systems. All tokens, ads, and data will be lost forever.
+                  <DialogDescription className="text-zinc-500 text-xs leading-relaxed">
+                    You are about to purge your entire presence. All tokens,
+                    ads, and data will be lost forever.
                   </DialogDescription>
                 </div>
               </DialogHeader>
 
-              <form
-                onSubmit={form.handleSubmit(onDeleteSubmit)}
-                className="space-y-6 py-4"
-              >
+              {/* 2. Use the aliased deleteForm and handleDeleteSubmit */}
+              <form onSubmit={handleDeleteSubmit} className="space-y-6 py-4">
                 <Controller
                   name="confirmation"
-                  control={form.control}
+                  control={deleteForm.control}
                   render={({ field, fieldState }) => (
-                    <Field
-                      data-invalid={fieldState.invalid}
-                      className="space-y-3"
-                    >
+                    <div className="space-y-3">
                       <FieldLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 text-center block">
                         Type <span className="text-white">DELETE</span> below
                       </FieldLabel>
@@ -154,11 +133,11 @@ export function DangerZone() {
                       />
                       {fieldState.invalid && (
                         <FieldError
+                          errors={[{ message: fieldState.error?.message }]}
                           className="text-center"
-                          errors={[fieldState.error]}
                         />
                       )}
-                    </Field>
+                    </div>
                   )}
                 />
 
@@ -167,9 +146,9 @@ export function DangerZone() {
                     type="submit"
                     variant="destructive"
                     className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-red-500/20"
-                    disabled={form.formState.isSubmitting}
+                    disabled={isDeleting}
                   >
-                    {form.formState.isSubmitting ? (
+                    {isDeleting ? (
                       <Loader2 className="animate-spin" />
                     ) : (
                       "Confirm Deletion"

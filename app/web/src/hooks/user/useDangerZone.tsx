@@ -1,3 +1,4 @@
+import { useState } from "react"; // 👈 Don't forget this!
 import { useAuthStore } from "@/store/authStore";
 import { useWorkspaceStore } from "@/store/workspaceStore";
 import { useRouter } from "next/navigation";
@@ -20,42 +21,35 @@ type DeleteAccountInput = {
 
 export const useTerminateSessions = () => {
   const router = useRouter();
+  const [isTerminating, setIsTerminating] = useState(false);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const clearWorkspace = useWorkspaceStore((state) => state.clearWorkspace);
 
-  const form = useForm<DeleteAccountInput>({
-    resolver: zodResolver(deleteAccountSchema),
-  });
-
-  const onSubmit = async (data: DeleteAccountInput) => {
-if (data.confirmation !== "DELETE") {
-  form.setError("confirmation", { message: "You must type DELETE" });
-  return;
-}
+  const handleTerminate = async () => {
+    setIsTerminating(true);
     try {
       const response = await userService.terminateSessions();
+      // We clear everything because terminating other sessions
+      // often invalidates the current token in many security architectures
       clearAuth();
       clearWorkspace();
-      toast.success(response.data?.message || "All sessions terminated.");
+      toast.success(
+        response.data?.message ||
+          "Other sessions terminated. Please log back in.",
+      );
       router.push("/login");
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        toast.error(
-          error.response?.data?.message || "Failed to terminate sessions",
-        );
-      }
+      const msg = axios.isAxiosError(error)
+        ? error.response?.data?.message
+        : "Failed to terminate sessions";
+      toast.error(msg);
+    } finally {
+      setIsTerminating(false);
     }
   };
 
-  return {
-    form,
-    register: form.register,
-    errors: form.formState.errors,
-    isSubmitting: form.formState.isSubmitting,
-    handleSubmit: form.handleSubmit(onSubmit),
-  };
+  return { handleTerminate, isTerminating };
 };
-
 
 export const useDeleteUser = () => {
   const router = useRouter();
@@ -64,33 +58,34 @@ export const useDeleteUser = () => {
 
   const form = useForm<DeleteAccountInput>({
     resolver: zodResolver(deleteAccountSchema),
+    defaultValues: { confirmation: "" },
   });
 
   const onSubmit = async (data: DeleteAccountInput) => {
     if (data.confirmation !== "DELETE") {
-      form.setError("confirmation", { message: "You must type DELETE" });
+      form.setError("confirmation", { message: "Validation mismatch." });
       return;
     }
+
     try {
       const response = await userService.deleteUser();
+
+      // Cleanup
       clearAuth();
       clearWorkspace();
 
       toast.success(response.data?.message || "Account successfully deleted.");
       router.push("/");
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        toast.error(
-          error.response?.data?.message || "Failed to delete account",
-        );
-      }
+      const msg = axios.isAxiosError(error)
+        ? error.response?.data?.message
+        : "Deletion failed";
+      toast.error(msg);
     }
   };
 
   return {
     form,
-    register: form.register,
-    errors: form.formState.errors,
     isSubmitting: form.formState.isSubmitting,
     handleSubmit: form.handleSubmit(onSubmit),
   };
