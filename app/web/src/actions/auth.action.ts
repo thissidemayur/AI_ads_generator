@@ -1,6 +1,6 @@
 "use server";
 
-import { authService } from "@/features/auth/auth.service";
+import { authService } from "@/services/auth.service";
 import { env } from "@/lib/env";
 import {
   forgetPasswordDTO,
