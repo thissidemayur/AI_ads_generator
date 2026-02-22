@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { Controller } from "react-hook-form";
 import {
-  AlertTriangle,
-  Trash2,
   Loader2,
   ShieldAlert,
   ZapOff,
@@ -19,25 +18,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Field, FieldError } from "@/components/ui/field";
+import { useDeleteActiveWorkspace } from "@/hooks/workspaces/useDeleteActiveWorkspace";
 
-export function WorkspaceDangerZone({
-  tenantName,
-  tenantId,
-}: {
-  tenantName?: string;
-  tenantId?: string;
-}) {
-  const [confirmName, setConfirmName] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
+export function WorkspaceDangerZone({ tenantName }: { tenantName?: string }) {
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
-  // Placeholder for logic
-  const handleDelete = async () => {
-    console.log(`Eliminating environment: ${tenantId}`);
-  };
+  const { form, handleSubmit, isSubmitting, isValid } =
+    useDeleteActiveWorkspace();
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* 🧭 Label Section */}
       <div className="lg:col-span-4 space-y-4">
         <div className="p-3 bg-red-500/10 rounded-2xl w-fit border border-red-500/20">
           <ZapOff className="w-5 h-5 text-red-500" />
@@ -51,12 +42,11 @@ export function WorkspaceDangerZone({
           </h3>
           <p className="text-[11px] text-zinc-500 leading-relaxed font-medium">
             Irreversible actions for this studio. Deleting an environment will
-            purge all associated ad history, trained personas, and token logs.
+            purge all associated ad history and assets.
           </p>
         </div>
       </div>
 
-      {/* 🧨 Action Card */}
       <div className="lg:col-span-8 p-1 rounded-[2.5rem] bg-gradient-to-br from-red-500/20 to-transparent">
         <div className="bg-[#050505]/60 backdrop-blur-3xl p-8 rounded-[2.4rem] border border-red-500/10 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
@@ -71,7 +61,7 @@ export function WorkspaceDangerZone({
               </p>
             </div>
 
-            <Dialog>
+            <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
               <DialogTrigger asChild>
                 <Button
                   variant="destructive"
@@ -80,6 +70,7 @@ export function WorkspaceDangerZone({
                   Confirm Destruction
                 </Button>
               </DialogTrigger>
+
               <DialogContent className="bg-zinc-950/95 backdrop-blur-2xl border-white/[0.08] sm:max-w-[440px] rounded-[2.5rem] p-8 shadow-showroom">
                 <DialogHeader className="space-y-4">
                   <div className="mx-auto p-4 bg-red-500/10 rounded-[1.5rem] w-fit border border-red-500/20">
@@ -94,34 +85,48 @@ export function WorkspaceDangerZone({
                       <span className="text-white font-mono font-bold italic">
                         {tenantName}
                       </span>{" "}
-                      to confirm the purge of this workspace.
+                      to confirm the purge.
                     </DialogDescription>
                   </div>
                 </DialogHeader>
 
-                <div className="py-4 space-y-3">
-                  <Input
-                    placeholder={tenantName}
-                    value={confirmName}
-                    onChange={(e) => setConfirmName(e.target.value)}
-                    className="bg-white/[0.02] border-white/[0.08] focus:border-red-500/50 rounded-2xl h-14 text-center font-bold tracking-tight text-white"
-                  />
-                </div>
-
-                <DialogFooter>
-                  <Button
-                    variant="destructive"
-                    className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-red-500/20 active:scale-[0.98] transition-all"
-                    disabled={confirmName !== tenantName || isDeleting}
-                    onClick={handleDelete}
-                  >
-                    {isDeleting ? (
-                      <Loader2 className="animate-spin w-4 h-4" />
-                    ) : (
-                      "Delete Workspace"
+                <form onSubmit={handleSubmit} className="py-4 space-y-6">
+                  <Controller
+                    name="workspaceName"
+                    control={form.control}
+                    render={({ field, fieldState }) => (
+                      <div className="space-y-2">
+                        <Input
+                          {...field}
+                          placeholder={tenantName}
+                          className="bg-white/[0.02] border-white/[0.08] focus:border-red-500/50 rounded-2xl h-14 text-center font-bold tracking-tight text-white"
+                          aria-invalid={fieldState.invalid}
+                        />
+                        {fieldState.invalid && (
+                          <FieldError
+                            errors={[{ message: fieldState.error?.message }]}
+                            className="text-center"
+                          />
+                        )}
+                      </div>
                     )}
-                  </Button>
-                </DialogFooter>
+                  />
+
+                  <DialogFooter>
+                    <Button
+                      type="submit"
+                      variant="destructive"
+                      className="w-full h-14 rounded-2xl font-black uppercase tracking-widest shadow-lg shadow-red-500/20 active:scale-[0.98] transition-all"
+                      disabled={!isValid || isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="animate-spin w-4 h-4" />
+                      ) : (
+                        "Delete Workspace"
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </form>
               </DialogContent>
             </Dialog>
           </div>
