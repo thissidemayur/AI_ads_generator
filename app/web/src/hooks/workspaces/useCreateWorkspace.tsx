@@ -1,4 +1,3 @@
-// hooks/workspaces/useCreateWorkspace.ts
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,9 +27,7 @@ export const useCreateWorkspace = () => {
       const response = await workspaceService.createWorkspace(data);
       const newWorkspace = response.data.data; // Assuming your API returns the Tenant object
 
-      //  update the list of all workspaces so the sidebar reflects the new one
       setWorkspaces([...workspaces, newWorkspace]);
-      //automatically switch to the newly created workspace
       setActiveWorkspace(newWorkspace, USER_ROLES[0]);
       toast.success(`Workspace "${newWorkspace.name}" created successfully!`);
       router.push("/dashboard");

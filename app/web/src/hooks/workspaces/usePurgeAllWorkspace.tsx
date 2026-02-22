@@ -1,4 +1,3 @@
-// hooks/workspaces/usePurgeAllWorkspaces.ts
 import { useWorkspaceStore } from "@/store/workspaceStore";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
