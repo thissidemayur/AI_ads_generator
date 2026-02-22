@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
-import { Mail, Hash, Loader2, ArrowRight, CheckCircle2, RefreshCw } from "lucide-react";
-import * as z from "zod";
+import { Controller } from "react-hook-form";
+import { Mail, Hash, Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,60 +10,47 @@ import {
   Field,
   FieldLabel,
   FieldError,
-  FieldGroup,
   FieldDescription,
 } from "@/components/ui/field";
+import { useConfirmEmailChange, useRequestEmailChange } from "@/hooks/user/useEmailChange";
 
-// 🛡️ Schemas
-export const requestEmailSchema = z.object({
-  newEmail: z.string().email("Please enter a valid email address."),
-});
-
-export const verifyEmailSchema = z.object({
-  otp: z.string().length(6, "OTP must be exactly 6 digits."),
-});
-
-type RequestEmailValues = z.infer<typeof requestEmailSchema>;
-type VerifyEmailValues = z.infer<typeof verifyEmailSchema>;
 
 export function EmailChangeForm() {
   const [step, setStep] = useState<"request" | "verify">("request");
   const [pendingEmail, setPendingEmail] = useState("");
 
-  const requestForm = useForm<RequestEmailValues>({
-    resolver: zodResolver(requestEmailSchema),
-    defaultValues: { newEmail: "" },
-  });
+  const { form: requestForm, handleSubmit: handleRequestSubmit } =
+    useRequestEmailChange();
 
-  const verifyForm = useForm<VerifyEmailValues>({
-    resolver: zodResolver(verifyEmailSchema),
-    defaultValues: { otp: "" },
-  });
+  const { form: verifyForm, handleSubmit: handleVerifySubmit } =
+    useConfirmEmailChange();
 
-  // Placeholder handlers
-  const onRequestSubmit = async (data: RequestEmailValues) => {
-    setPendingEmail(data.newEmail);
-    setStep("verify");
+  const onRequestSubmit = async (data: { newEmail: string }) => {
+    await handleRequestSubmit();
+
+    if (Object.keys(requestForm.formState.errors).length === 0) {
+      setPendingEmail(data.newEmail);
+      setStep("verify");
+    }
   };
 
-  const onVerifySubmit = async (data: VerifyEmailValues) => {
-    console.log("Verifying OTP...", data.otp);
+  const onVerifySubmit = async () => {
+    await handleVerifySubmit();
   };
 
   if (step === "verify") {
     return (
       <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-        <form
-          onSubmit={verifyForm.handleSubmit(onVerifySubmit)}
-          className="space-y-6 max-w-md"
-        >
+        <form onSubmit={onVerifySubmit} className="space-y-6 max-w-md">
           {/* Status Indicator */}
           <div className="flex items-center gap-4 p-5 rounded-[1.5rem] bg-primary/5 border border-primary/10">
             <div className="p-2 bg-primary/10 rounded-xl">
               <CheckCircle2 className="w-5 h-5 text-primary" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Verification Sent</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                Verification Sent
+              </span>
               <p className="text-xs text-white font-medium">{pendingEmail}</p>
             </div>
           </div>
@@ -90,8 +75,14 @@ export function EmailChangeForm() {
                     maxLength={6}
                   />
                 </div>
-                <FieldDescription className="text-[10px] ml-1">Check your spam folder if the code doesn't arrive.</FieldDescription>
-                {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                <FieldDescription className="text-[10px] ml-1">
+                  Check your spam folder if the code doesn&apos;t arrive.
+                </FieldDescription>
+                {fieldState.invalid && (
+                  <FieldError
+                    errors={[{ message: fieldState.error?.message }]}
+                  />
+                )}
               </Field>
             )}
           />
@@ -102,7 +93,11 @@ export function EmailChangeForm() {
               className="flex-[2] h-14 rounded-2xl font-black uppercase tracking-widest bg-primary hover:bg-primary/90 text-white"
               disabled={verifyForm.formState.isSubmitting}
             >
-              {verifyForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : "Verify Identity"}
+              {verifyForm.formState.isSubmitting ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                "Verify Identity"
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -143,7 +138,9 @@ export function EmailChangeForm() {
                 aria-invalid={fieldState.invalid}
               />
             </div>
-            {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+            {fieldState.invalid && (
+              <FieldError errors={[{ message: fieldState.error?.message }]} />
+            )}
           </Field>
         )}
       />
