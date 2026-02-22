@@ -1,11 +1,22 @@
 "use client";
+import { useQuery } from "@tanstack/react-query";
+import { MembersTable } from "./members-table";
+import { InviteMemberSheet } from "./addMemberToWorkspace";
+import { workspaceService } from "@/services/workspace.service";
 
-import { Users, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { MembersTable } from "./members-table"; 
-import { InviteMemberSheet } from "./assMemberToWorkspace";
+export function MemberManagement() {
+  const {
+    data: response,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ["workspace-members"],
+    queryFn: () => workspaceService.getAllMembersOfWorkspace(),
+  });
 
-export function MemberManagement({ tenantId }: { tenantId?: string }) {
+
+  const membersList = response?.data?.data || [];
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="space-y-1">
@@ -16,13 +27,12 @@ export function MemberManagement({ tenantId }: { tenantId?: string }) {
           Manage access levels and invite collaborators.
         </p>
       </div>
-
       <div className="lg:col-span-2 space-y-4">
         <div className="flex justify-end">
-          <InviteMemberSheet />
+          <InviteMemberSheet onMemberAdded={refetch} />
         </div>
         <div className="rounded-[2rem] border border-zinc-800 bg-zinc-950/30 overflow-hidden">
-          <MembersTable />
+          <MembersTable members={membersList} isLoading={isLoading} />
         </div>
       </div>
     </div>
