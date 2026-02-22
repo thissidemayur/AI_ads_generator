@@ -1,8 +1,8 @@
-import {z} from "zod"
+import { z } from "zod";
 
 const envSchema = z.object({
   NEXT_PUBLIC_API_URL: z.url(),
-  NEXT_INTERNAL_EXPRESS_URL: z.string(),
+  NEXT_INTERNAL_EXPRESS_URL: z.string().optional(),
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
@@ -10,15 +10,20 @@ const envSchema = z.object({
 
 const _env = envSchema.safeParse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-  NEXT_INTERNAL_EXPRESS_URL: process.env.INTERNAL_EXPRESS_URL,
+  NEXT_INTERNAL_EXPRESS_URL: process.env.NEXT_INTERNAL_EXPRESS_URL,
   NODE_ENV: process.env.NODE_ENV,
 });
 
-console.log("_env: ",_env)
-if (! _env.success) {
-    const errorMsg = "❌ Invalid environment variables: "+ _env.error.message;
-    console.log("errorMsg: ",errorMsg)
-    throw new Error(errorMsg)
+if (!_env.success) {
+  const errorMsg = " Invalid environment variables: " + _env.error.message;
+  console.error(errorMsg);
+  throw new Error(errorMsg);
 }
 
-export const env = _env.data
+if (typeof window === "undefined" && !_env.data.NEXT_INTERNAL_EXPRESS_URL) {
+  throw new Error(
+    " NEXT_INTERNAL_EXPRESS_URL is required on the server-side",
+  );
+}
+
+export const env = _env.data;
