@@ -26,6 +26,8 @@ export class AuthController implements IAuthController {
     const result = await this.authService.verifyEmail(email, otp);
 
     this.setRefreshCookie(res, result.refreshToken);
+    // hybdird delivery: Set accessToken as cookies and return JSON
+    this.setAccessCookie(res,result.accessToken)
     const data = {
       accessToken: result.accessToken,
       user: result.user,
@@ -40,15 +42,19 @@ export class AuthController implements IAuthController {
 
   //   login
   login = asyncHandler(async (req: Request, res: Response) => {
-    console.log("dto: ",req.body)
+    console.log("dto: ", req.body);
     const result = await this.authService.login(req.body);
-    console.log("result: ",result)
+    console.log("result: ", result);
     const data = {
       accessToken: result.accessToken,
       user: result.user,
       tenant: result.tenant,
     };
-    this.setRefreshCookie(res,result.refreshToken)
+    this.setRefreshCookie(res, result.refreshToken);
+
+    // hybdird delivery: Set accessToken as cookies and return JSON
+    this.setAccessCookie(res, result.accessToken);
+
     return res
       .status(200)
       .json(new ApiResponse(200, "Logged in Successfully", data));
@@ -66,10 +72,15 @@ export class AuthController implements IAuthController {
       tenant: result.tenant,
     };
 
-    return res
+    // hybdird delivery: Set accessToken as cookies and return JSON
+this.setRefreshCookie(res, result.refreshToken);
+this.setAccessCookie(res, result.accessToken);
+
+return res
       .status(200)
       .json(new ApiResponse(200, "Session refreshed successfully.", data));
-  });
+  }
+  );
 
   logout = asyncHandler(async (req: Request, res: Response) => {
     const token = req.cookies.refreshToken;
@@ -79,12 +90,8 @@ export class AuthController implements IAuthController {
     }
 
     // clear cookies
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/api/auth/refresh",
-    });
+  res.clearCookie("refreshToken", { path: "/" });
+  res.clearCookie("accessToken", { path: "/" });
 
     return res
       .status(200)
@@ -136,8 +143,18 @@ export class AuthController implements IAuthController {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
       sameSite: "lax",
-      path: "/api/auth/refresh", //If we didn't specify /api/auth/refresh, the browser would send the refreshToken (the 40-byte secret) with every single request to the API.
+      path: "/", 
       maxAge: env.JWT_REFRESH_SECRET_EXPIRE,
     });
+  }
+
+  private setAccessCookie(res:Response, token:string) {
+    res.cookie("accessToken",token,{
+      httpOnly:true, //prevent xss
+      secure:env.NODE_ENV ==="production",
+      sameSite:"lax",
+      path:"/",
+      maxAge:env.JWT_ACCESS_SECRET_EXPIRE
+    })
   }
 }
