@@ -12,7 +12,7 @@ export const authorize = (allowedRole:Role[]) =>{
         const hasPermission = allowedRole.includes(req.authUser.role)
         if(!hasPermission) {
             throw new ApiError(
-              401,
+              403,
               `Access denied. Requires one of ${allowedRole.join(", ")}`,
             );
         }
