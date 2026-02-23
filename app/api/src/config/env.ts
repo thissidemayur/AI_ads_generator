@@ -28,14 +28,11 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z
     .string()
     .min(32, "Refresh secret must be at least 32 chars"),
-  JWT_REFRESH_SECRET_EXPIRE:z.coerce.number().default(60*60*24*7),
-    // Third Party
-    // RESEND_API_KEY: z.string().startsWith("re_","Invalid Resend API key"),
-
-
-    // Frontend URL
-    FRONTEND_URL:z.url(),
-    VERIFY_OTP_EXPIRES_TIME : z.coerce.number().default(900), // 15 min
+  JWT_REFRESH_SECRET_EXPIRE: z.coerce.number().default(60 * 60 * 24 * 7),
+  JWT_ACCESS_SECRET_EXPIRE: z.coerce.number().default(60 * 60 * 24 * 7),
+  // Frontend URL
+  FRONTEND_URL: z.url(),
+  VERIFY_OTP_EXPIRES_TIME: z.coerce.number().default(900), // 15 min
 });
 
 
