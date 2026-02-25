@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Controller } from "react-hook-form";
 import { Loader2, Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
@@ -20,12 +19,11 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { useForgetPassword } from "../../../hooks/auth/useForgetPassword";
+import { useForgetPassword } from "@/hooks/auth/useForgetPassword";
 
 export function ForgetPasswordForm() {
   const { form, handleSubmit, isSubmitting, isSent } = useForgetPassword();
 
-  // 1. Success State View
   if (isSent) {
     return (
       <Card className="w-full sm:max-w-md mx-auto">
@@ -42,7 +40,7 @@ export function ForgetPasswordForm() {
         </CardHeader>
         <CardContent className="flex justify-center">
           <Link
-            href="/login"
+            href="/auth/login"
             className="text-sm font-medium text-indigo-600 hover:text-indigo-500 flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" /> Back to login
@@ -52,7 +50,6 @@ export function ForgetPasswordForm() {
     );
   }
 
-  // 2. Initial Form View
   return (
     <Card className="w-full sm:max-w-md mx-auto">
       <CardHeader>
@@ -106,7 +103,7 @@ export function ForgetPasswordForm() {
 
             <div className="text-center mt-2">
               <Link
-                href="/login"
+                href="/auth/login"
                 className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
               >
                 Return to sign in
