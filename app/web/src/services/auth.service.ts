@@ -4,28 +4,31 @@ import type { forgetPasswordDTO, loginDTO, RegisterDTO, resendVerificationDTO, r
 
 export const authService = {
   // login
-  async login(credentials: loginDTO) {
+   login(credentials: loginDTO) {
 
     return api.post(`/auth/login`, credentials);
   },
 
-  async register(credentials: RegisterDTO) {
+   register(credentials: RegisterDTO) {
     return api.post(`/auth/register`, credentials);
   },
 
-  async verifyEmail(values: verifyEmailDTO) {
+   verifyEmail(values: verifyEmailDTO) {
     return api.post(`/auth/verify-email`, values);
   },
 
-  async resendOtp(email: resendVerificationDTO) {
+   async resendOtp(email: resendVerificationDTO) {
     return await api.post("/auth/resend-verify", email);
   },
-  async forgetPassword(email: forgetPasswordDTO) {
+   forgetPassword(email: forgetPasswordDTO) {
     return api.post("/auth/forget-password", email);
   },
-  async resetPassword(valus: resetPasswordDTO) {
+   resetPassword(valus: resetPasswordDTO) {
     return api.post("/auth/forget-password", valus);
   },
+  logout( ) {
+    return api.post("/auth/logout")
+  }
 
-  //
+  
 };
