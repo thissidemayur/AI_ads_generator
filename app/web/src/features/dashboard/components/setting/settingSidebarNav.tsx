@@ -50,7 +50,6 @@ export function SidebarNav({ items }: SidebarNavProps) {
               )}
             />
 
-            {/* Icon Box */}
             <div
               className={cn(
                 "relative p-2.5 rounded-xl border transition-all duration-500",
@@ -81,7 +80,6 @@ export function SidebarNav({ items }: SidebarNavProps) {
               )}
             </div>
 
-            {/* Interactive Hover Glow (CSS Only) */}
             {!isActive && (
               <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
             )}
