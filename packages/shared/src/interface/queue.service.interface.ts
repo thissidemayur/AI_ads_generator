@@ -1,4 +1,4 @@
-// packages/shared/src/interfaces/queue.service.interface.ts
+import type { AdJobPayload } from "../dtos/ads.dto";
 
 export type EmailJobType = "VERIFY_EMAIL" | "PASSWORD_RESET" | "WELCOME_EMAIL";
 
@@ -13,9 +13,7 @@ export interface EmailJobDataDTO {
 }
 
 export interface IQueueService {
-
   addEmailJob(data: EmailJobDataDTO): Promise<void>;
+  addAdJob(data: AdJobPayload): Promise<void>;
 
-
-  addAIJob?(tenantId: string, prompt: string): Promise<void>;
 }
