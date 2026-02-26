@@ -33,6 +33,12 @@ const envSchema = z.object({
   // Frontend URL
   FRONTEND_URL: z.url(),
   VERIFY_OTP_EXPIRES_TIME: z.coerce.number().default(900), // 15 min
+
+  // CLOUDINARY
+  CLOUDINARY_CLOUD_NAME: z.string(),
+  CLOUDINARY_API_KEY: z.string(),
+  CLOUDINARY_API_SECRET: z.string(),
+  CLOUDINARY_URL: z.string().optional(),
 });
 
 
