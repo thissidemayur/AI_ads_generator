@@ -1,61 +1,69 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
-  engineType    = "client"
-  runtime = "bun"
-
+  provider   = "prisma-client-js"
+  output     = "../src/generated/prisma"
+  engineType = "client"
+  runtime    = "bun"
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-
 enum Role {
-  OWNER
-  ADMIN
-  EDITOR
-  VIEWER
+  OWNER   // Full access + Billing
+  ADMIN   // Management access
+  EDITOR  // Can create/edit ads
+  VIEWER  // Read-only access
 }
 
 enum AdStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
+  PENDING     // Job created in DB, not yet in Queue
+  PROCESSING  // Worker has picked up the job
+  COMPLETED   // AI generation and upload successful
+  FAILED      // Job terminated due to error
+}
+
+enum AdType {
+  IMAGE
+  VIDEO
+}
+
+enum TransactionType {
+  GENERATION 
+  REFUND    
+  TOPUP      
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
+  id           String  @id @default(uuid())
+  email        String  @unique
   passwordHash String
   firstName    String?
   lastName     String?
-  isVerified   Boolean  @default(false)
-  
-  // Security field: increment this to invalidate ALL current JWTs/Sessions
-  tokenVersion Int      @default(0) 
+  isVerified   Boolean @default(false)
 
-  members      Member[] 
-  sessions     Sessions[] 
+  tokenVersion Int @default(0)
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  members  Member[]   
+  sessions Sessions[] 
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([email])
 }
 
-// workspace
 model Tenant {
-  id           String   @id @default(uuid())
+  id           String @id @default(uuid())
   name         String
-  tokenBalance Int      @default(0) 
-  
+  tokenBalance Int    @default(0) 
+
   members      Member[]
   ads          Ad[]
-
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  transactions Transaction[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Member {
@@ -64,39 +72,63 @@ model Member {
   userId   String
   tenantId String
 
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
   @@unique([userId, tenantId])
-  @@index([tenantId]) // Optimized for checking all members of a workspace
+  @@index([tenantId]) 
 }
 
 model Sessions {
-  id           String   @id @default(uuid())
-  refreshToken String   @unique // Hashed version of the token for security
+  id           String @id @default(uuid())
+  refreshToken String @unique 
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  ipAddress    String?
-  userAgent    String?
-  
-  expiresAt    DateTime
-  createdAt    DateTime @default(now())
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  ipAddress String?
+  userAgent String?
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
   @@index([userId])
 }
 
 model Ad {
-  id         String   @id @default(uuid())
-  tenantId   String
-  prompt     String
-  contentUrl String? 
-  status     AdStatus @default(PENDING)
+  id             String  @id @default(uuid())
+  tenantId       String
+  userId         String 
+  type           AdType  @default(IMAGE)
+  prompt         String
+  refinedPrompt String
+  negativePrompt String? // Things the AI should avoid (e.g. "blurry")
 
-  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  // Storage paths
+  contentUrl   String?   
 
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  status       AdStatus @default(PENDING)
+  errorMessage String?  @unique // Logs the specific failure reason
 
-  @@index([tenantId]) // Critical for tenant data isolation performance
+  /// Stores technical AI params (model version, seed, steps, etc.)
+  config        Json? 
+  
+  /// The ID returned by the external AI provider (OpenAI/Replicate)
+  externalJobId String? @unique 
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId]) 
+}
+
+model Transaction {
+  id        String @id @default(uuid())
+  tenantId  String
+  amount    Int    // Negative for spending, positive for adding
+  type      TransactionType 
+  adId      String? @unique // Links to the Ad that caused this spend
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
 }
