@@ -9,6 +9,7 @@ import {
   type PrismaClient,
   type Member,
   type Tenant,
+  Prisma,
 } from "@project/shared/server";
 
 export class WorkspaceService implements IWorkspaceService {
@@ -18,17 +19,24 @@ export class WorkspaceService implements IWorkspaceService {
     private readonly memberRepo: IMemberRepository,
   ) {}
 
-  async createWorkspace(userId: string, name: string): Promise<Tenant> {
-    return await this.prisma.$transaction(async (tx) => {
-      const tenant = await this.workspaceRepo.createWithTransaction(tx, name);
-      await this.memberRepo.createWithTransaction(
-        tx,
-        userId,
-        tenant.id,
-        Role.OWNER,
-      );
-      return tenant;
-    });
+  async createWorkspace(
+    userId: string,
+    name: string,
+    tx?: Prisma.TransactionClient, 
+  ): Promise<Tenant> {
+    const execute = tx || this.prisma;
+
+    const tenant = await this.workspaceRepo.createWithTransaction(
+      execute,
+      name,
+    );
+    await this.memberRepo.createWithTransaction(
+      execute,
+      userId,
+      tenant.id,
+      Role.OWNER,
+    );
+    return tenant;
   }
 
   async getWorkspaceById(id: string): Promise<Tenant | null> {
