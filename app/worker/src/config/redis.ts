@@ -1,4 +1,4 @@
-import type { RedisOptions } from "ioredis";
+import { Redis, type RedisOptions } from "ioredis";
 import { env } from "./env";
 
 export const redisConnection: RedisOptions = {
@@ -12,3 +12,6 @@ export const redisConnection: RedisOptions = {
     return delay;
   },
 };
+
+
+export const redis = new Redis(redisConnection)
