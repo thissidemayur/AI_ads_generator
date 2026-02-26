@@ -1,6 +1,5 @@
 import {
   ApiError,
-  type AuthResponseDTO,
   type IAuthService,
   type IMemberRepository,
   type IQueueService,
@@ -8,16 +7,15 @@ import {
   type ITokenServcice,
   type IUserRepository,
   type IWorkspaceService,
-  type loginDTO,
-  type RegisterDTO,
+
 } from "@project/shared";
 import type Redis from "ioredis";
 import crypto from "node:crypto"
 
 import { randomInt } from "node:crypto";
 import { env } from "../config/env";
-import { promise } from "zod";
 import { Role, type PrismaClient } from "@project/shared/server";
+import type { AuthResponseDTO, loginDTO, RegisterDTO } from "@project/shared/client";
 export class AuthService implements IAuthService {
   constructor(
     private readonly db: PrismaClient, // needed for transactions
@@ -27,7 +25,7 @@ export class AuthService implements IAuthService {
     private readonly redis: Redis,
     private readonly tokenService: ITokenServcice,
     private readonly memberRepo: IMemberRepository,
-    private readonly workspaceService: IWorkspaceService
+    private readonly workspaceService: IWorkspaceService,
   ) {}
 
   // register user
@@ -38,27 +36,36 @@ export class AuthService implements IAuthService {
       const existingUser = await this.userRepo.findByEmail(data.email);
       if (existingUser) throw new ApiError(400, "Email already in use");
 
-      // heavy lifting
       const passwordHash = await Bun.password.hash(data.password);
 
-      // atomic transicition
+      const { password, workspaceName, ...prismaUserData } = data;
+
+      // 3. Atomic Transaction
       const result = await this.db.$transaction(async (tx) => {
-             // create the user
-         const user =   await this.userRepo.createWithTx(tx,{...data,passwordHash})
-             // create tenant(workspace) with memeber(all user releated to that tenant)
-        const tenant =await this.workspaceService.createWorkspaceWithTx(user.id, `${data.firstName}'s workspace`)
+        // Create the user with ONLY compatible fields
+        const user = await this.userRepo.createWithTx(tx, {
+          ...prismaUserData,
+          passwordHash,
+        });
+
+        // 4. TRANSACTION PROPAGATION
+        const tenant = await this.workspaceService.createWorkspace(
+          user.id,
+          workspaceName || `${data.firstName}'s workspace`,
+          tx,
+        );
 
         return { user, tenant };
       });
 
-      // verification Email
+      // 5. Post-Transaction Logic (Redis & Queue)
       const otp = this.generateOTP();
-      await this.redis.set(`temp:verify:${result.user.email}`, otp, "EX", 900); //15 min
+      await this.redis.set(`temp:verify:${result.user.email}`, otp, "EX", 900);
 
       await this.queueService.addEmailJob({
         to: result.user.email,
         type: "VERIFY_EMAIL",
-        name:result.user.firstName || "User",
+        name: result.user.firstName || "User",
         payload: { otp },
       });
 
@@ -67,23 +74,16 @@ export class AuthService implements IAuthService {
         userId: result.user.id,
       };
     } catch (error) {
-      // if (
-      //   error instanceof Prisma.PrismaClientUnknownRequestError &&
-      //   error?.code === "P2002"
-      // ) {
-      //   throw new ApiError(
-      //     400,
-      //     "This email is already registered. Try logging in.",
-      //   );
-      // }
-
+      // Standard Prisma unique constraint error (P2002)
+      if ((error as any)?.code === "P2002") {
+        throw new ApiError(400, "This email is already registered.");
+      }
       throw error;
     }
   }
 
   //   login
   async login(data: loginDTO): Promise<AuthResponseDTO> {
-
     await this.applyRateLimit(`limit:login:${data.email}`, 10, 1800); //10 attempts 30 min
     const user = await this.userRepo.findByEmail(data.email);
     if (!user) throw new ApiError(401, "Invalid credentials");
@@ -310,20 +310,20 @@ export class AuthService implements IAuthService {
     const hashedToken = Bun.SHA256.hash(refreshToken, "hex");
     const sessionKey = `session:${hashedToken}`;
 
-  //  fetch sesison first to get the userId
-  // need user id to gind the correct set`auth:session:${userId}`
-  const sessionData = await this.redis.get(sessionKey)
-  if(sessionData) {
-    const session = JSON.parse(sessionData)
-    const userSessionSetKey = `auth:session:${session.id}`
+    //  fetch sesison first to get the userId
+    // need user id to gind the correct set`auth:session:${userId}`
+    const sessionData = await this.redis.get(sessionKey);
+    if (sessionData) {
+      const session = JSON.parse(sessionData);
+      const userSessionSetKey = `auth:session:${session.id}`;
 
-    // attomic cleanup
-    await Promise.all([
-      this.redis.del(sessionKey), // delete the actual session data
-      this.redis.srem(userSessionSetKey, sessionKey), //Remove THIS key from the User's device list
-      this.sessionRepo.deleteByToken(hashedToken), // Remove from Postgres Audit Log
-    ]);
-  }
+      // attomic cleanup
+      await Promise.all([
+        this.redis.del(sessionKey), // delete the actual session data
+        this.redis.srem(userSessionSetKey, sessionKey), //Remove THIS key from the User's device list
+        this.sessionRepo.deleteByToken(hashedToken), // Remove from Postgres Audit Log
+      ]);
+    }
   }
 
   // forget password (we send ticket to the user email)
@@ -331,7 +331,7 @@ export class AuthService implements IAuthService {
     await this.applyRateLimit(`limit:forget-password:${email}`, 3, 3600); //1 hour
 
     const user = await this.userRepo.findByEmail(email);
-    console.log("user: ",user)
+    console.log("user: ", user);
     if (!user) return; // security: silent fail if user doesnot exist to prevent email enumeration
 
     // genereate high entropy token
@@ -372,14 +372,15 @@ export class AuthService implements IAuthService {
     // Atomic Update: change password + increment version
     // incrementingg version ensure old sessions are killed after password change
     // cleanup
-    await Promise.all([ await this.userRepo.updatePassword(userId, passwordHash),    await this.userRepo.incrementVersion(userId) ]);
-    
+    await Promise.all([
+      await this.userRepo.updatePassword(userId, passwordHash),
+      await this.userRepo.incrementVersion(userId),
+    ]);
+
     await Promise.all([
       this.redis.del(redisKey),
       this.redis.del(`user:version:${userId}`),
     ]);
-
-    
   }
 
   //
