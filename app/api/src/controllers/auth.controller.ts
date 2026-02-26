@@ -1,5 +1,10 @@
-import { ApiError, ApiResponse, type IAuthController, type IAuthService } from "@project/shared";
-import {type NextFunction, type  Request, type Response } from "express";
+import {
+  ApiError,
+  ApiResponse,
+  type IAuthController,
+  type IAuthService,
+} from "@project/shared";
+import {  type Request, type Response } from "express";
 import { env } from "../config/env";
 import { asyncHandler } from "@project/shared/server";
 
@@ -9,7 +14,7 @@ export class AuthController implements IAuthController {
   // register controller
   register = asyncHandler(async (req: Request, res: Response) => {
     const result = await this.authService.register(req.body);
-    
+
     return res
       .status(201)
       .json(
@@ -27,7 +32,8 @@ export class AuthController implements IAuthController {
 
     this.setRefreshCookie(res, result.refreshToken);
     // hybdird delivery: Set accessToken as cookies and return JSON
-    this.setAccessCookie(res,result.accessToken)
+    this.setAccessCookie(res, result.accessToken);
+    this.setTenantCookie(res, result.tenant.id);
     const data = {
       accessToken: result.accessToken,
       user: result.user,
@@ -54,7 +60,7 @@ export class AuthController implements IAuthController {
 
     // hybdird delivery: Set accessToken as cookies and return JSON
     this.setAccessCookie(res, result.accessToken);
-
+    this.setTenantCookie(res, result.tenant.id);
     return res
       .status(200)
       .json(new ApiResponse(200, "Logged in Successfully", data));
@@ -73,26 +79,25 @@ export class AuthController implements IAuthController {
     };
 
     // hybdird delivery: Set accessToken as cookies and return JSON
-this.setRefreshCookie(res, result.refreshToken);
-this.setAccessCookie(res, result.accessToken);
-
-return res
+    this.setRefreshCookie(res, result.refreshToken);
+    this.setAccessCookie(res, result.accessToken);
+    this.setTenantCookie(res, result.tenant.id);
+    return res
       .status(200)
       .json(new ApiResponse(200, "Session refreshed successfully.", data));
-  }
-  );
+  });
 
   logout = asyncHandler(async (req: Request, res: Response) => {
     const token = req.cookies.refreshToken;
-    console.log("token: ",token)
+    console.log("token: ", token);
     if (token) {
       await this.authService.logout(token);
     }
 
     // clear cookies
-  res.clearCookie("refreshToken", { path: "/" });
-  res.clearCookie("accessToken", { path: "/" });
-
+    res.clearCookie("refreshToken", { path: "/" });
+    res.clearCookie("accessToken", { path: "/" });
+    res.clearCookie("activeTenantId", { path: "/" });
     return res
       .status(200)
       .json(new ApiResponse(200, "Logged out successfully"));
@@ -143,18 +148,28 @@ return res
       httpOnly: true,
       secure: env.NODE_ENV === "production",
       sameSite: "lax",
-      path: "/", 
+      path: "/",
       maxAge: env.JWT_REFRESH_SECRET_EXPIRE,
     });
   }
 
-  private setAccessCookie(res:Response, token:string) {
-    res.cookie("accessToken",token,{
-      httpOnly:true, //prevent xss
-      secure:env.NODE_ENV ==="production",
-      sameSite:"lax",
-      path:"/",
-      maxAge:env.JWT_ACCESS_SECRET_EXPIRE
-    })
+  private setAccessCookie(res: Response, token: string) {
+    res.cookie("accessToken", token, {
+      httpOnly: true, //prevent xss
+      secure: env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: env.JWT_ACCESS_SECRET_EXPIRE,
+    });
+  }
+
+  private setTenantCookie(res: Response, tenantId: string) {
+    res.cookie("activeTenantId", tenantId, {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+    });
   }
 }
