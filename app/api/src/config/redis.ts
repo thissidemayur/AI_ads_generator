@@ -2,7 +2,7 @@ import Redis, { type RedisOptions } from "ioredis"
 import { env } from "./env"
 
 
-const redisOptions: RedisOptions = {
+export const redisOptions: RedisOptions = {
     host:env.REDIS_HOST,
     port:env.REDIS_PORT,
     password:env.REDIS_PASSWORD,
@@ -18,8 +18,9 @@ const redisOptions: RedisOptions = {
     enableReadyCheck:true
 }
 
-const redis =  new Redis(redisOptions)
-
+export const redis =  new Redis(redisOptions)
+// Every time a user opens an SSE stream, we might need a fresh subscription logic
+export const createSubscriber = () => new Redis(redisOptions)
 redis.on("error",(err)=>{
     console.error("❌ Redis Client Error\n", err);
 
@@ -30,4 +31,3 @@ redis.on("connect",()=>{
 })
 
 
-export {redis}
