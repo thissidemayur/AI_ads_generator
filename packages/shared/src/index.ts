@@ -24,3 +24,7 @@ export * from "./interface/storage.service.interface"
 export * from "./interface/notifier.service.interface"
 export * from "./interface/ai.interface"
 // export   * from "./database/index"
+
+
+// import * as aiService from "./services/ai.service"
+export * from "./services/ai.service"
