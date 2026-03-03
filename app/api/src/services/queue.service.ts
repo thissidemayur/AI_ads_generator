@@ -6,10 +6,10 @@ import type { AdJobPayload } from "@project/shared/client";
 
 export class QueueService implements IQueueService {
   private emailQueue: Queue;
-  private adQueue: Queue
+  private adQueue: Queue;
 
   constructor() {
-    this.emailQueue = new Queue("email-queue", { connection: redisOptions});
+    this.emailQueue = new Queue("email-queue", { connection: redisOptions });
     this.adQueue = new Queue("ad-generation-queue", {
       connection: redisOptions,
       defaultJobOptions: {
@@ -20,7 +20,7 @@ export class QueueService implements IQueueService {
     });
   }
 
-  async addEmailJob(data: EmailJobDataDTO):Promise<void> {
+  async addEmailJob(data: EmailJobDataDTO): Promise<void> {
     await this.emailQueue.add("send-email", data, {
       attempts: 5,
       backoff: {
@@ -34,16 +34,15 @@ export class QueueService implements IQueueService {
     });
   }
 
-  async addAdJob(data:AdJobPayload):Promise<void> {
-    await this.adQueue.add(`ad-job-${data.adId}`,data,{
-      attempts:3,
-      backoff:{
-        type:"exponential",
-        delay:5000
+  async addAdJob(data: AdJobPayload): Promise<void> {
+    await this.adQueue.add(`ad-job-${data.adId}`, data, {
+      attempts: 3,
+      backoff: {
+        type: "exponential",
+        delay: 5000,
       },
-      removeOnComplete:true,
-    })
+      removeOnComplete: true,
+    });
   }
-
-
+  async addCleanupJob(data: { url: string }): Promise<void> {}
 }
