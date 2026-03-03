@@ -29,10 +29,14 @@ export const Ad_Status = {
 export type AdStatus = (typeof Ad_Status)[keyof typeof Ad_Status];
 
 export const CreateAdSchema = z.object({
-  prompt: z.string().min(10).max(500),
-  adType: z.enum(AD_TYPE),
-  aspectRatio: z.enum(ASPECT_RATIO).default(ASPECT_RATIO.SQUARE),
-  modelProvider: z.enum(MODEL_PROVIDER).default(MODEL_PROVIDER.OPENAI),
+  prompt: z.string().min(10, "Prompt must be at least 10 characters").max(500),
+  adType: z.enum([AD_TYPE.IMAGE, AD_TYPE.VIDEO]),
+  aspectRatio: z.enum([
+    ASPECT_RATIO.SQUARE,
+    ASPECT_RATIO.LANDSCAPE,
+    ASPECT_RATIO.PORTRAIT,
+  ]),
+  modelProvider: z.enum([MODEL_PROVIDER.OPENAI, MODEL_PROVIDER.GEMINI]),
 });
 
 export type CreateAdInput = z.infer<typeof CreateAdSchema>;
@@ -44,7 +48,6 @@ export interface AdJobPayload extends CreateAdInput {
   userId: string;
   tokenCost: number;
 }
-
 
 // real time update payload sent via SSE to the client
 export interface AdProgressPayload {
