@@ -15,5 +15,6 @@ export interface EmailJobDataDTO {
 export interface IQueueService {
   addEmailJob(data: EmailJobDataDTO): Promise<void>;
   addAdJob(data: AdJobPayload): Promise<void>;
-
+  // deletig files from storage bucket like cloudinary/s3 without blocking the API
+  addCleanupJob(data: { url: string }): Promise<void>;
 }
