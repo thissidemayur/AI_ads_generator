@@ -1,8 +1,10 @@
 // apps/api/src/routes/workspace.routes.ts
 import { Router, type RequestHandler } from "express";
 import type { IWorkspaceControllerInterface } from "@project/shared";
-// import { createWorkspaceSchema, addMemberSchema } from "@project/shared/client";
-// import { validate } from "../middlewares/validate.middleware";
+import { authorize } from "../middlewares/authorize.middleware";
+import { Role } from "@project/shared/server";
+import { validate } from "../middlewares/validate.middleware";
+import { addMemberSchema, createWorkspaceSchema } from "@project/shared/client";
 
 export const workspaceRouter = (
   controller: IWorkspaceControllerInterface,
@@ -12,19 +14,26 @@ export const workspaceRouter = (
 
   router.use(authenticate);
 
-  router.post("/", controller.create);
+  router.post(
+    "/",
+    authorize([Role.ADMIN]),
+    validate(createWorkspaceSchema),
+    controller.create,
+  );
   router.get("/my", controller.getMyWorkspace); // List of all workspaces user belongs to
   router.get("/current", controller.getWorkspaceById); // Details of x-tenant-id
 
-  router.get("/members", controller.getMembers);
+  router.get("/members",authorize([Role.ADMIN,Role.OWNER]), controller.getMembers);
   router.post(
     "/members",
+    authorize([Role.ADMIN, Role.OWNER]),
+    validate(addMemberSchema),
     controller.addMemberToWorkspace,
   );
 
-  router.delete("/current", controller.deleteCurrentWorkspace);
+  router.delete("/current",authorize([Role.ADMIN]), controller.deleteCurrentWorkspace);
 
-  router.delete("/purge-all", controller.purgeAllWorkspaces);
+  router.delete("/purge-all",authorize([Role.ADMIN]) ,controller.purgeAllWorkspaces);
 router.patch("/current",controller.update)
   return router;
 };

@@ -1,20 +1,13 @@
 import type {
   IAdController,
-  ITokenServcice,
 } from "@project/shared";
-import { Router } from "express";
-import { authMiddleware } from "../middlewares/auth.middleware";
-import type Redis from "ioredis";
+import { Router, type RequestHandler } from "express";
 import { authorize } from "../middlewares/authorize.middleware";
 import { Role } from "@project/shared/server";
 
-export const adsRouter = (
-  controller: IAdController,
-  toknService: ITokenServcice,
-  redis: Redis,
-) => {
+export const adsRouter = (controller: IAdController, authenticate:RequestHandler) => {
   const router = Router();
-  const auth = authMiddleware(toknService, redis);
+  const auth = authenticate
   router.get("/", auth, controller.handleGetHistory);
 
   router.post(
@@ -24,7 +17,6 @@ export const adsRouter = (
     controller.handleStartGeneration,
   );
 
-  router.get("/status/:adId", controller.handleStreamStatus);
 
   router.post(
     "/:adId/retry",
@@ -33,7 +25,7 @@ export const adsRouter = (
     controller.handleRetry,
   );
   router.get("/:adId", auth, controller.handleGetDetails);
-  router.get("/status/:adId");
+  router.get("/status/:adId",controller.handleStreamStatus);
   router.delete(
     "/:adId",
     auth,
