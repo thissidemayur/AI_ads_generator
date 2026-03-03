@@ -10,17 +10,17 @@ datasource db {
 }
 
 enum Role {
-  OWNER   // Full access + Billing
-  ADMIN   // Management access
-  EDITOR  // Can create/edit ads
-  VIEWER  // Read-only access
+  OWNER // Full access + Billing
+  ADMIN // Management access
+  EDITOR // Can create/edit ads
+  VIEWER // Read-only access
 }
 
 enum AdStatus {
-  PENDING     // Job created in DB, not yet in Queue
-  PROCESSING  // Worker has picked up the job
-  COMPLETED   // AI generation and upload successful
-  FAILED      // Job terminated due to error
+  PENDING // Job created in DB, not yet in Queue
+  PROCESSING // Worker has picked up the job
+  COMPLETED // AI generation and upload successful
+  FAILED // Job terminated due to error
 }
 
 enum AdType {
@@ -29,9 +29,9 @@ enum AdType {
 }
 
 enum TransactionType {
-  GENERATION 
-  REFUND    
-  TOPUP      
+  GENERATION
+  REFUND
+  TOPUP
 }
 
 model User {
@@ -44,8 +44,8 @@ model User {
 
   tokenVersion Int @default(0)
 
-  members  Member[]   
-  sessions Sessions[] 
+  members  Member[]
+  sessions Sessions[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -56,12 +56,12 @@ model User {
 model Tenant {
   id           String @id @default(uuid())
   name         String
-  tokenBalance Int    @default(0) 
+  tokenBalance Int    @default(0)
 
   members      Member[]
   ads          Ad[]
   transactions Transaction[]
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -77,12 +77,12 @@ model Member {
   createdAt DateTime @default(now())
 
   @@unique([userId, tenantId])
-  @@index([tenantId]) 
+  @@index([tenantId])
 }
 
 model Sessions {
   id           String @id @default(uuid())
-  refreshToken String @unique 
+  refreshToken String @unique
   userId       String
   user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -98,37 +98,39 @@ model Sessions {
 model Ad {
   id             String  @id @default(uuid())
   tenantId       String
-  userId         String 
+  userId         String
   type           AdType  @default(IMAGE)
   prompt         String
-  refinedPrompt String
+  refinedPrompt  String?
   negativePrompt String? // Things the AI should avoid (e.g. "blurry")
-
+  // modelImage String?
+  // productImage String?
   // Storage paths
-  contentUrl   String?   
+  contentUrl     String?
 
   status       AdStatus @default(PENDING)
   errorMessage String?  @unique // Logs the specific failure reason
 
   /// Stores technical AI params (model version, seed, steps, etc.)
-  config        Json? 
-  
-  /// The ID returned by the external AI provider (OpenAI/Replicate)
-  externalJobId String? @unique 
+  config Json?
 
+  /// The ID returned by the external AI provider (OpenAI/Replicate)
+  externalJobId String? @unique
+
+  metadata  Json     @default("{}")
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([tenantId]) 
+  @@index([tenantId])
 }
 
 model Transaction {
-  id        String @id @default(uuid())
+  id        String          @id @default(uuid())
   tenantId  String
-  amount    Int    // Negative for spending, positive for adding
-  type      TransactionType 
-  adId      String? @unique // Links to the Ad that caused this spend
-  tenant    Tenant @relation(fields: [tenantId], references: [id])
-  createdAt DateTime @default(now())
+  amount    Int // Negative for spending, positive for adding
+  type      TransactionType
+  adId      String?         @unique // Links to the Ad that caused this spend
+  tenant    Tenant          @relation(fields: [tenantId], references: [id])
+  createdAt DateTime        @default(now())
 }
