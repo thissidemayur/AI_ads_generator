@@ -4,7 +4,7 @@ import { PromptTemplate } from "@langchain/core/prompts";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { AdType } from "../database";
 import { GoogleGenAI, PersonGeneration } from "@google/genai";
-import { ImageTemplate } from "../store/prompt";
+import { ImageTemplate } from "../lib/prompt";
 
 // using models
 // image -> nanoBanana
