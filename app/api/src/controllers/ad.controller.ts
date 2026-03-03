@@ -18,7 +18,10 @@ export class AdController implements IAdController {
 
   handleStartGeneration = asyncHandler(async (req: Request, res: Response) => {
     const tenantId = req.headers["x-tenant-id"] as string;
-    const userId = req.authUser.id;
+    const userId = req.authUser.userId;
+    if (!userId) {
+      throw new ApiError(401, "User identification failed");
+    }
 
     try {
       const ad = await this.adService.createAdGeneratorTask(
