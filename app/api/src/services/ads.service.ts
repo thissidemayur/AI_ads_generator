@@ -22,6 +22,7 @@ export class AdService implements IAdService {
       prompt: input.prompt,
       type: input.adType,
       status: AdStatus.PENDING,
+      refinedPrompt:null,
       config: {
         aspectRatio: input.aspectRatio,
         provider: input.modelProvider,
