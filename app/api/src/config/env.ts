@@ -1,5 +1,4 @@
 import {z} from "zod"
-import path from "path";
 import dotenv from "dotenv"
 
 
@@ -28,8 +27,8 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z
     .string()
     .min(32, "Refresh secret must be at least 32 chars"),
-  JWT_REFRESH_SECRET_EXPIRE: z.coerce.number().default(60 * 60 * 24 * 7),
-  JWT_ACCESS_SECRET_EXPIRE: z.coerce.number().default(60 * 60 * 24 * 7),
+  JWT_REFRESH_SECRET_EXPIRE: z.string(),
+  JWT_ACCESS_SECRET_EXPIRE: z.string(),
   // Frontend URL
   FRONTEND_URL: z.url(),
   VERIFY_OTP_EXPIRES_TIME: z.coerce.number().default(900), // 15 min
@@ -47,7 +46,12 @@ const _env = envSchema.safeParse(process.env)
 
 if (!_env.success) {
     console.error("❌ Invalid environment variables:", _env.error.message);
-    process.exit(1); // stop the server
+    process.exit(1); 
 }
 
 export const env = _env.data
+
+console.log("DEBUG_ZOD_EXPIRY:", {
+  access: `|${_env.data.JWT_ACCESS_SECRET_EXPIRE}|`,
+  refresh: `|${_env.data.JWT_REFRESH_SECRET_EXPIRE}|`,
+});
