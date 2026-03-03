@@ -1,7 +1,7 @@
 import type { IAdRepository } from "@project/shared";
 import type { Ad, AdStatus, PrismaClient } from "@project/shared/server";
 
-export class AdRepository implements IAdRepository {
+export class PrismaAdRepository implements IAdRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async create(data: Partial<Ad>): Promise<Ad> {
@@ -35,7 +35,13 @@ export class AdRepository implements IAdRepository {
   async updateStatus(
     adId: string,
     status: AdStatus,
-    data: { contentUrl?: string; error?: string; externalJobId?: string },
+    data: {
+      contentUrl?: string;
+      error?: string;
+      externalJobId?: string;
+      refinedPrompt?: string;
+      metadata?: Record<string, any>; //flexible for json field
+    },
   ): Promise<Ad> {
     return this.prisma.ad.update({
       where: { id: adId },
@@ -43,6 +49,8 @@ export class AdRepository implements IAdRepository {
         status,
         contentUrl: data.contentUrl,
         externalJobId: data.externalJobId,
+        refinedPrompt:data.refinedPrompt,
+        metadata:data.metadata ? data.metadata : undefined
       },
     });
   }
@@ -98,21 +106,24 @@ export class AdRepository implements IAdRepository {
     });
   }
 
-  async refundTokens(tenantId: string, adId: string, amount: number): Promise<void> {
+  async refundTokens(
+    tenantId: string,
+    adId: string,
+    amount: number,
+  ): Promise<void> {
     await this.prisma.$transaction([
-        this.prisma.tenant.update({
-            where:{id:tenantId},
-            data:{tokenBalance:{increment:amount}}
-        }),
-        // create refund record on transacition
-        this.prisma.transaction.create({
-            data:{
-                tenantId,
-                adId,
-                amount, //+ve no for refund
-                type:"REFUND"
-            }
-        })
-    ])
+      this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: { tokenBalance: { increment: amount } },
+      }),
+      this.prisma.transaction.create({
+        data: {
+          tenantId,
+          adId,
+          amount, //+ve no for refund
+          type: "REFUND",
+        },
+      }),
+    ]);
   }
 }
