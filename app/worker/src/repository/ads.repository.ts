@@ -40,6 +40,7 @@ export class AdRepository implements IAdRepository {
       error?: string;
       externalJobId?: string;
       refinedPrompt?:string
+      metadata?:Record<string,any>
     },
   ): Promise<Ad> {
     return this.prisma.ad.update({
