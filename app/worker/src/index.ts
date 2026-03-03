@@ -1,4 +1,4 @@
-import { env } from "./config/env";
+import { createAdWorker } from "./consumers/ads/ads.consumer";
 import { createEmailWorker } from "./consumers/email/email.consumer";
 
 const startWorker = async () => {
@@ -9,10 +9,12 @@ const startWorker = async () => {
   try {
     // initalise all consumers here
     const emailWorker = createEmailWorker();
+    const adWorker  = createAdWorker()
 
     const gracefulShutdown = async (signal: string) => {
       console.log(`\n🛑 ${signal} received. Closing workers...`);
-      await emailWorker.close();
+      await Promise.all([emailWorker.close(),adWorker.close()]);
+
       console.log("👋 Worker shut down safely.");
       process.exit(0)
 
