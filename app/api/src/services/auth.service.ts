@@ -7,15 +7,18 @@ import {
   type ITokenServcice,
   type IUserRepository,
   type IWorkspaceService,
-
 } from "@project/shared";
 import type Redis from "ioredis";
-import crypto from "node:crypto"
+import crypto from "node:crypto";
 
 import { randomInt } from "node:crypto";
 import { env } from "../config/env";
 import { Role, type PrismaClient } from "@project/shared/server";
-import type { AuthResponseDTO, loginDTO, RegisterDTO } from "@project/shared/client";
+import type {
+  AuthResponseDTO,
+  loginDTO,
+  RegisterDTO,
+} from "@project/shared/client";
 export class AuthService implements IAuthService {
   constructor(
     private readonly db: PrismaClient, // needed for transactions
@@ -115,7 +118,6 @@ export class AuthService implements IAuthService {
     });
 
     const refreshToken = this.tokenService.generateRefreshToken();
-
     //  state persistence (Redis+postgres)
     await this.persistSession({
       refreshToken,
@@ -242,9 +244,11 @@ export class AuthService implements IAuthService {
     const hashedOldToken = Bun.SHA256.hash(refreshToken, "hex");
     const oldSessionKey = `auth:session:${hashedOldToken}`;
 
-    // 1. Fetch Session from Redis
     const sessionData = await this.redis.get(oldSessionKey);
+
     if (!sessionData) {
+      // Add this to see all existing keys for debugging
+      const allKeys = await this.redis.keys("auth:session:*");
       throw new ApiError(401, "Session expired or reused. Please login again.");
     }
 
@@ -311,7 +315,7 @@ export class AuthService implements IAuthService {
     const sessionKey = `session:${hashedToken}`;
 
     //  fetch sesison first to get the userId
-    // need user id to gind the correct set`auth:session:${userId}`
+    // need user id to gind the correct set`auth:session:${hashedToken}`
     const sessionData = await this.redis.get(sessionKey);
     if (sessionData) {
       const session = JSON.parse(sessionData);
@@ -331,7 +335,6 @@ export class AuthService implements IAuthService {
     await this.applyRateLimit(`limit:forget-password:${email}`, 3, 3600); //1 hour
 
     const user = await this.userRepo.findByEmail(email);
-    console.log("user: ", user);
     if (!user) return; // security: silent fail if user doesnot exist to prevent email enumeration
 
     // genereate high entropy token
@@ -346,10 +349,6 @@ export class AuthService implements IAuthService {
     ); //1 hour
 
     // queue
-    console.log(
-      "PASSWORD:RESET:  ",
-      `${env.FRONTEND_URL}/reset-password?token=${resetToken}`,
-    );
     await this.queueService.addEmailJob({
       to: email,
       type: "PASSWORD_RESET",
@@ -425,31 +424,42 @@ export class AuthService implements IAuthService {
     tokenVersion: number;
   }) {
     const hashedRefreshToken = Bun.SHA256.hash(session.refreshToken, "hex");
-
     const { refreshToken, ...sessionMetadata } = session;
-
     // Consistent Keys
     const sessionKey = `auth:session:${hashedRefreshToken}`;
     const userSessionSetKey = `auth:user-sessions:${session.userId}`;
     const versionKey = `auth:user-version:${session.userId}`;
 
-    await Promise.all([
-      // 1. Store the session data
-      this.redis.set(sessionKey, JSON.stringify(session), "EX", 604800),
+    try {
+      await Promise.all([
+        // 1. Store the session data
+        this.redis.set(sessionKey, JSON.stringify(session), "EX", 604800),
 
-      // 2. Add this session to the user's set of active devices
-      this.redis.sadd(userSessionSetKey, sessionKey),
+        // 2. Add this session to the user's set of active devices
+        this.redis.sadd(userSessionSetKey, sessionKey),
 
-      // 3. Set the global version for middleware
-      this.redis.set(versionKey, session.tokenVersion.toString(), "EX", 604800),
+        // 3. Set the global version for middleware
+        this.redis.set(
+          versionKey,
+          session.tokenVersion.toString(),
+          "EX",
+          604800,
+        ),
 
-      //  Postgres Audit Log
-      this.sessionRepo.create({
-        refreshToken: hashedRefreshToken,
-        userId: session.userId,
-        expiresAt: new Date(Date.now() + 604800000),
-      }),
-    ]);
+        //  Postgres Audit Log
+        this.sessionRepo.create({
+          refreshToken: hashedRefreshToken,
+          userId: session.userId,
+          expiresAt: new Date(Date.now() + 604800000),
+        }),
+      ]);
+    } catch (error: any) {
+      console.error("[Redis_Persistence_Failed]:", error);
+      throw new ApiError(
+        500,
+        "Internal Server Error: Session could not be created",
+      );
+    }
   }
 
   // rate limiter
