@@ -14,6 +14,13 @@ const envSchema = z.object({
 
   RESEND_API_KEY: z.string(),
   FROM_EMAIL: z.string(),
+
+  CLOUDINARY_CLOUD_NAME: z.string(),
+  CLOUDINARY_API_KEY: z.string(),
+  CLOUDINARY_API_SECRET: z.string(),
+  CLOUDINARY_URL: z.string().optional(),
+
+  GEMINI_API_KEY:z.string()
 });
 
 const _env = envSchema.safeParse(process.env)
