@@ -4,10 +4,9 @@ import {
   type IAuthController,
   type IAuthService,
 } from "@project/shared";
-import {  type Request, type Response } from "express";
+import { type Request, type Response } from "express";
 import { env } from "../config/env";
 import { asyncHandler } from "@project/shared/server";
-
 export class AuthController implements IAuthController {
   constructor(private readonly authService: IAuthService) {}
 
@@ -48,9 +47,7 @@ export class AuthController implements IAuthController {
 
   //   login
   login = asyncHandler(async (req: Request, res: Response) => {
-    console.log("dto: ", req.body);
     const result = await this.authService.login(req.body);
-    console.log("result: ", result);
     const data = {
       accessToken: result.accessToken,
       user: result.user,
@@ -75,13 +72,20 @@ export class AuthController implements IAuthController {
     const data = {
       accessToken: result.accessToken,
       user: result.user,
+      refreshToken: result.refreshToken,
       tenant: result.tenant,
     };
 
     // hybdird delivery: Set accessToken as cookies and return JSON
-    this.setRefreshCookie(res, result.refreshToken);
-    this.setAccessCookie(res, result.accessToken);
-    this.setTenantCookie(res, result.tenant.id);
+    if (result.refreshToken) {
+      this.setRefreshCookie(res, result.refreshToken);
+    }
+    if (result.accessToken) {
+      this.setAccessCookie(res, result.accessToken);
+    }
+    if (result.tenant) {
+      this.setTenantCookie(res, result.tenant.id);
+    }
     return res
       .status(200)
       .json(new ApiResponse(200, "Session refreshed successfully.", data));
@@ -89,7 +93,6 @@ export class AuthController implements IAuthController {
 
   logout = asyncHandler(async (req: Request, res: Response) => {
     const token = req.cookies.refreshToken;
-    console.log("token: ", token);
     if (token) {
       await this.authService.logout(token);
     }
@@ -143,23 +146,42 @@ export class AuthController implements IAuthController {
   });
 
   //   ================ HELPER FUNCTION ================
+
+  parseToMs = (time: string | number): number => {
+    if (typeof time === "number") return time * 1000;
+
+    const unit = time.toLowerCase();
+    const value = parseInt(unit);
+
+    if (isNaN(value)) return 60 * 1000;
+    if (unit.endsWith("m")) return value * 60 * 1000;
+    if (unit.endsWith("h")) return value * 60 * 60 * 1000;
+    if (unit.endsWith("d")) return value * 24 * 60 * 60 * 1000;
+    if (unit.endsWith("s")) return value * 1000;
+
+    return value * 1000;
+  };
+  
   private setRefreshCookie(res: Response, token: string) {
+    const ttl = this.parseToMs(env.JWT_REFRESH_SECRET_EXPIRE);
+
     res.cookie("refreshToken", token, {
       httpOnly: true,
       secure: env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: env.JWT_REFRESH_SECRET_EXPIRE,
+      maxAge: ttl,
     });
   }
 
   private setAccessCookie(res: Response, token: string) {
+    const ttl = this.parseToMs(env.JWT_ACCESS_SECRET_EXPIRE);
     res.cookie("accessToken", token, {
       httpOnly: true, //prevent xss
       secure: env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: env.JWT_ACCESS_SECRET_EXPIRE,
+      maxAge: ttl,
     });
   }
 
