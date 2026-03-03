@@ -4,9 +4,11 @@ import jwt from "jsonwebtoken"
 import crypto from "crypto"
 
 
-export class TokenService implements ITokenServcice{
+export class TokenService implements ITokenServcice {
   generateAccessToken(payload: TokenPayloadDTO): string {
-    return jwt.sign(payload, env.JWT_ACCESS_SECRET);
+    return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
+      expiresIn: env.JWT_ACCESS_SECRET_EXPIRE as any,
+    });
   }
 
   generateRefreshToken(): string {
@@ -14,6 +16,8 @@ export class TokenService implements ITokenServcice{
   }
 
   verifyAccessToken(token: string): TokenPayloadDTO {
-    return jwt.verify(token, env.JWT_ACCESS_SECRET) as TokenPayloadDTO;
+    return jwt.verify(token, env.JWT_ACCESS_SECRET, {
+      algorithms: ["HS256"],
+    }) as TokenPayloadDTO;
   }
 }
