@@ -10,12 +10,10 @@ export const createWorkspaceSchema = z.object({
     .max(50, "Workspace name must be under 50 characters"),
 });
 
-
 export const addMemberSchema = z.object({
   targetUserId: z.string().uuid("Invalid User ID format (UUID required)"),
-  role: z.enum(USER_ROLES,"Invalid Role selectd"),
+  role: z.enum(USER_ROLES, "Invalid Role selectd"),
 });
-
 
 export const workspaceHeaderSchema = z.object({
   "x-tenant-id": z.string().uuid("A valid Workspace ID is required in headers"),
@@ -24,3 +22,11 @@ export const workspaceHeaderSchema = z.object({
 export type CreateWorkspaceDTO = z.infer<typeof createWorkspaceSchema>;
 export type AddMemberDTO = z.infer<typeof addMemberSchema>;
 export type WorkspaceHeaderDTO = z.infer<typeof workspaceHeaderSchema>;
+
+export interface ClientTenant {
+  id: string;
+  name: string;
+  tokenBalance: number;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
