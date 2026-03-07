@@ -4,9 +4,14 @@ import {
   type IAuthController,
   type IAuthService,
 } from "@project/shared";
-import { type Request, type Response } from "express";
+import { type Request, type RequestHandler, type Response } from "express";
 import { env } from "../config/env";
 import { asyncHandler } from "@project/shared/server";
+import * as arctic from "arctic";
+import { googleProvider } from "../config/google.oauth.config";
+import type { ParamsDictionary } from "express-serve-static-core";
+import type { ParsedQs } from "qs";
+
 export class AuthController implements IAuthController {
   constructor(private readonly authService: IAuthService) {}
 
@@ -145,6 +150,102 @@ export class AuthController implements IAuthController {
       );
   });
 
+  googleLogin = asyncHandler(async (req: Request, res: Response) => {
+    const state = arctic.generateState();
+    const codeVerifier = arctic.generateCodeVerifier();
+    const scopes = ["openid", "profile", "email"];
+    const url = googleProvider.createAuthorizationURL(
+      state,
+      codeVerifier,
+      scopes,
+    );
+    res.cookie("google_oauth_state", state, {
+      httpOnly: true,
+      path: "/",
+      secure: env.NODE_ENV === "production" ? true : false,
+      maxAge: 60 * 10 * 1000,
+    });
+    res.cookie("google_code_verifier", codeVerifier, {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production" ? true : false,
+      path: "/",
+      maxAge: 60 * 10 * 1000, //10min
+    });
+
+    return res.redirect(url.toString());
+  });
+
+  googleCallback = asyncHandler(async (req: Request, res: Response) => {
+    const code = req.query.code as string;
+    const state = req.query.state as string;
+    const storedState = req.cookies.google_oauth_state;
+    const storedCodeVerifier = req.cookies.google_code_verifier;
+
+    if (
+      !code ||
+      !state ||
+      storedState !== state ||
+      storedCodeVerifier === null
+    ) {
+      throw new ApiError(400, "Invalid state or code");
+    }
+
+    try {
+      const tokens = await googleProvider.validateAuthorizationCode(
+        code,
+        storedCodeVerifier,
+      );
+      const accessToken = tokens.accessToken();
+      const accessTokenExpiresAt = tokens.accessTokenExpiresAt();
+
+      const response = await fetch(
+        "https://openidconnect.googleapis.com/v1/userinfo",
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+
+      const googleUser:any = await response.json();
+      const result = await this.authService.validateSocailLogin({
+        email: googleUser.email,
+        firstName: googleUser.given_name,
+        lastName: googleUser.family_name,
+        provider: "GOOGLE",
+        providerId: googleUser.sub,
+      });
+
+      res.clearCookie("google_oauth_state");
+      res.clearCookie("google_code_verifier");
+
+      this.setRefreshCookie(res, result.refreshToken);
+      this.setAccessCookie(res, result.accessToken);
+      this.setTenantCookie(res, result.tenant.id);
+
+      // redirect back
+      return res.redirect(`${env.FRONTEND_URL}/dashboard`);
+    } catch (error) {
+      if (error instanceof arctic.OAuth2RequestError) {
+        const errorCode = error.code;
+        const errorMsg = error.message;
+        const errorName = error.name;
+        const errorDescription = error.description;
+        const errorStack = error.stack;
+        console.error(
+          `[ERROR_during_GOOGLE_CALLBACK]; errorCode: ${errorCode}  ||  errorName: ${errorName} || errorMessage: ${errorMsg} || errorDescription: ${errorDescription}`,
+        );
+        console.error(`Error Stack: ${errorStack}`);
+        throw new ApiError(
+          400,
+          "Google authentication failed: Invalid credentials.",
+        );
+      }
+
+      throw error;
+    }
+  });
+
   //   ================ HELPER FUNCTION ================
 
   parseToMs = (time: string | number): number => {
@@ -161,7 +262,7 @@ export class AuthController implements IAuthController {
 
     return value * 1000;
   };
-  
+
   private setRefreshCookie(res: Response, token: string) {
     const ttl = this.parseToMs(env.JWT_REFRESH_SECRET_EXPIRE);
 

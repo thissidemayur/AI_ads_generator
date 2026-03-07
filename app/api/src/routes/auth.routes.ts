@@ -15,6 +15,8 @@ export const authRouter = (controller: IAuthController) => {
   router.post("/forget-password",validate(forgetPasswordSchema), controller.forgetPassword);
   router.post("/reset-password", validate(resetPasswordSchema),controller.resetPassword);
 
+  router.get("/google",controller.googleLogin)
+  router.get("/callback/google", controller.googleCallback);
   return router;
 };
 

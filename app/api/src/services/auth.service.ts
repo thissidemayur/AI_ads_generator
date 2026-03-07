@@ -18,6 +18,7 @@ import type {
   AuthResponseDTO,
   loginDTO,
   RegisterDTO,
+  validateSocailLoginDTO,
 } from "@project/shared/client";
 export class AuthService implements IAuthService {
   constructor(
@@ -202,7 +203,7 @@ export class AuthService implements IAuthService {
     };
   }
 
-  // resemd verification email
+  // resend verification email
   // usinng Layered rate limmiting- we created fixed window and a cool-down buffer
   async resendVerification(email: string): Promise<void> {
     //cooldown rate limit -> max 1 rqst per 60 second
@@ -247,14 +248,12 @@ export class AuthService implements IAuthService {
     const sessionData = await this.redis.get(oldSessionKey);
 
     if (!sessionData) {
-      // Add this to see all existing keys for debugging
       const allKeys = await this.redis.keys("auth:session:*");
       throw new ApiError(401, "Session expired or reused. Please login again.");
     }
 
     const session = JSON.parse(sessionData);
 
-    // 2. Tier 2 Check (Global Kill Switch)
     const currentVersion = await this.userRepo.getCurrentVersion(
       session.userId,
     );
@@ -263,7 +262,6 @@ export class AuthService implements IAuthService {
       throw new ApiError(401, "Security update required. Please login.");
     }
 
-    // 3. Fetch Fresh Data (names/roles change!)
     const [user, member] = await Promise.all([
       this.userRepo.findById(session.userId),
       this.memberRepo.findMember(session.userId, session.tenantId),
@@ -271,7 +269,6 @@ export class AuthService implements IAuthService {
 
     if (!user || !member) throw new ApiError(401, "Session invalid");
 
-    // 4. Generate New Pair
     const newAccessToken = this.tokenService.generateAccessToken({
       userId: user.id,
       tenantId: member.tenantId,
@@ -280,15 +277,12 @@ export class AuthService implements IAuthService {
     });
     const newRefreshToken = this.tokenService.generateRefreshToken();
 
-    // 5. ATOMIC SWAP: The Rotation
-    // Use SREM to remove the OLD key from the user's active set
     await Promise.all([
       this.redis.del(oldSessionKey),
       this.redis.srem(`auth:user-sessions:${user.id}`, oldSessionKey),
       this.sessionRepo.deleteByToken(hashedOldToken), // Sync Postgres audit log
     ]);
 
-    // Persist the NEW session (this adds it to Redis and the Set)
     await this.persistSession({
       refreshToken: newRefreshToken,
       userId: user.id,
@@ -408,6 +402,101 @@ export class AuthService implements IAuthService {
     await this.sessionRepo.deleteByUserId(userId);
   }
 
+  async validateSocailLogin(
+    payload: validateSocailLoginDTO,
+  ): Promise<AuthResponseDTO> {
+    let account = await this.db.account.findUnique({
+      where: {
+        provider_providerAccountId: {
+          provider: payload.provider,
+          providerAccountId: payload.providerId,
+        },
+      },
+      include: { user: true },
+    });
+
+    let user = account?.user;
+
+    if (!user) {
+      user = await this.userRepo.findByEmail(payload.email);
+    }
+
+    // if no user exist , create User + workspace + account
+    if (!user) {
+      const userData = {
+        email: payload.email,
+        firstName: payload.firstName,
+        lastName: payload.lastName,
+        isVerified: true,
+      };
+      const result = await this.db.$transaction(async (tx) => {
+        const newUser = await this.userRepo.createWithTx(tx, {
+          ...userData,
+          passwordHash: null,
+        });
+        const tenant = this.workspaceService.createWorkspace(
+          newUser.id,
+          `${payload.firstName}'s Workspace`,
+          tx,
+        );
+
+        await tx.account.create({
+          data: {
+            userId: newUser.id,
+            provider: payload.provider,
+            providerAccountId: payload.providerId,
+          },
+        });
+
+        return { user: newUser, tenant };
+      });
+      user = result.user;
+    } else {
+      // if user exist by email but no account record, link now
+      if (!account) {
+        await this.db.account.create({
+          data: {
+            userId: user.id,
+            provider: payload.provider,
+            providerAccountId: payload.providerId,
+          },
+        });
+      }
+    }
+    const memberShips = await this.memberRepo.findAllByUserId(user.id);
+    const activeMember = memberShips[0];
+
+    const accessToken = this.tokenService.generateAccessToken({
+      userId: user.id,
+      role: activeMember?.role as Role,
+      tenantId: activeMember?.tenantId as string,
+      version: user.tokenVersion,
+    });
+    const refreshToken = this.tokenService.generateRefreshToken();
+
+    await this.persistSession({
+      refreshToken,
+      userId: user.id,
+      tenantId: activeMember?.tenantId as string,
+      tokenVersion: user.tokenVersion,
+      role: activeMember?.role as Role,
+    });
+
+     return {
+       user: {
+         id: user.id,
+         email: user.email,
+         firstName: user.firstName ?? "",
+       },
+       tenant: {
+         id: activeMember?.tenantId as string,
+         name: activeMember?.tenant.name as string,
+         role: activeMember?.role as Role,
+       },
+       accessToken,
+       refreshToken,
+     };
+  }
   //   ======================== HELPER METHOD ========================
 
   private generateOTP() {
