@@ -3,7 +3,6 @@ import dotenv from "dotenv"
 
 
 dotenv.config({ path: `${process.cwd()}/.env` });
-console.log("ENV DATABASE:", process.env.DATABASE_URL);
 
 const envSchema = z.object({
   // Bun enviornment
@@ -38,10 +37,15 @@ const envSchema = z.object({
   CLOUDINARY_API_KEY: z.string(),
   CLOUDINARY_API_SECRET: z.string(),
   CLOUDINARY_URL: z.string().optional(),
+
+  // google 
+  GOOGLE_CLIENT_ID: z.string(),
+  GOOGLE_CLIENT_SECRET: z.string(),
+  GOOGLE_REDIRECT_URI: z.url(),
 });
 
 
-// va;idate the env
+// validate the env
 const _env = envSchema.safeParse(process.env)
 
 if (!_env.success) {
@@ -50,8 +54,3 @@ if (!_env.success) {
 }
 
 export const env = _env.data
-
-console.log("DEBUG_ZOD_EXPIRY:", {
-  access: `|${_env.data.JWT_ACCESS_SECRET_EXPIRE}|`,
-  refresh: `|${_env.data.JWT_REFRESH_SECRET_EXPIRE}|`,
-});
